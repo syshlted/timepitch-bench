@@ -42,13 +42,14 @@ static void usage(const char* argv0) {
     std::fprintf(stderr,
         "usage: %s [options]\n"
         "  --library <name>        signalsmith | soundtouch | rubberband | all (default: all)\n"
-        "  --signal  <name>        sine | sweep | impulse | noise (default: sine)\n"
+        "  --signal  <name>        sine | sweep | impulse | noise | shepard (default: sine)\n"
         "  --time-ratio <f>        output/input duration (default: 1.0)\n"
         "  --pitch-scale <f>       output/input frequency (default: 1.0)\n"
         "  --duration <sec>        input duration in seconds (default: 5.0)\n"
         "  --block-size <n>        frames per process() call (default: 512)\n"
         "  --sample-rate <hz>      (default: 48000)\n"
         "  --measure-latency       report each library's reported algorithmic latency\n"
+        "  --shepard-sweep-rate <oct/sec>  (default: 0.5; 0 = stationary)\n"
         "  --list                  list available libraries and exit\n",
         argv0);
 }
@@ -71,6 +72,7 @@ int main(int argc, char** argv) {
         else if (a == "--block-size")    opts.block_size = std::stoi(next());
         else if (a == "--sample-rate")   opts.sample_rate = std::stoi(next());
         else if (a == "--measure-latency") opts.measure_latency = true;
+        else if (a == "--shepard-sweep-rate") opts.shepard_sweep_rate = std::stod(next());
         else if (a == "--list") {
             for (auto& n : bench::available_stretchers()) std::printf("%s\n", n.c_str());
             return 0;

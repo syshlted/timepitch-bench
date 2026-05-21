@@ -36,6 +36,24 @@ struct QualityReport {
     // Spectral SNR vs an ideal reference, in dB (higher = closer to ideal).
     // -INF if reference comparison wasn't applicable.
     double spectral_snr_db = 0.0;
+
+    // Shepard-specific scoring. Computed from a window in the middle of the
+    // output and the corresponding window of the input.
+    std::vector<double> shepard_output_peaks_hz;
+    std::vector<double> shepard_input_peaks_hz;
+    // Median ratio between adjacent output peaks (expected ~2.0 = one octave).
+    double shepard_median_octave_ratio = 0.0;
+    // Median ratio of paired output/input peaks (expected ~pitch_scale).
+    double shepard_observed_pitch_ratio = 0.0;
+    // Gaussian fit of output peaks (log-magnitude vs log2-frequency).
+    // Center is reported in Hz, sigma in octaves. Expected center =
+    // 500 Hz * pitch_scale, expected sigma = 2.0 octaves.
+    double shepard_envelope_center_hz = 0.0;
+    double shepard_envelope_sigma_oct = 0.0;
+    bool   shepard_envelope_fit_ok    = false;
+    double shepard_input_envelope_center_hz = 0.0;
+    double shepard_input_envelope_sigma_oct = 0.0;
+    bool   shepard_input_envelope_fit_ok    = false;
 };
 
 // Compute pitch error (in cents) given expected and detected Hz.

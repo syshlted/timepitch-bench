@@ -16,6 +16,7 @@ struct RunOptions {
     double pitch_scale = 1.0;
     bool measure_latency = false;
     std::size_t fft_size = 16384;
+    double shepard_sweep_rate = 0.5; // octaves/sec; 0 = stationary
 };
 
 struct RunResult {

@@ -18,4 +18,18 @@ std::vector<double> magnitude_spectrum(const std::vector<float>& mono_signal,
 double estimate_fundamental_hz(const std::vector<float>& mono_signal,
                                int sample_rate, std::size_t fft_size);
 
+struct SpectralPeak {
+    double frequency_hz = 0.0;
+    double magnitude    = 0.0;
+};
+
+// Find up to max_peaks local maxima in the magnitude spectrum, ranked by
+// magnitude. Only peaks at least min_relative_height * global_max are kept.
+// Returns peaks sorted ascending by frequency.
+std::vector<SpectralPeak> find_top_peaks(const std::vector<float>& mono_signal,
+                                         int sample_rate,
+                                         std::size_t fft_size,
+                                         std::size_t max_peaks,
+                                         double min_relative_height = 0.1);
+
 } // namespace bench

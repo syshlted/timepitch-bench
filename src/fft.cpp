@@ -76,4 +76,46 @@ double estimate_fundamental_hz(const std::vector<float>& mono,
     return bin * static_cast<double>(sample_rate) / static_cast<double>(N);
 }
 
+std::vector<SpectralPeak> find_top_peaks(const std::vector<float>& mono,
+                                         int sample_rate,
+                                         std::size_t fft_size,
+                                         std::size_t max_peaks,
+                                         double min_relative_height) {
+    auto mag = magnitude_spectrum(mono, fft_size);
+    if (mag.size() < 4) return {};
+    const std::size_t N = next_pow2(std::min(mono.size(), fft_size));
+    const double bin_to_hz = static_cast<double>(sample_rate) /
+                             static_cast<double>(N);
+
+    double global_max = 0.0;
+    for (std::size_t i = 2; i + 1 < mag.size(); ++i) {
+        if (mag[i] > global_max) global_max = mag[i];
+    }
+    const double threshold = global_max * min_relative_height;
+
+    std::vector<SpectralPeak> peaks;
+    for (std::size_t i = 2; i + 1 < mag.size(); ++i) {
+        if (mag[i] < threshold) continue;
+        if (mag[i] <= mag[i - 1] || mag[i] <= mag[i + 1]) continue;
+        double y0 = mag[i - 1], y1 = mag[i], y2 = mag[i + 1];
+        double denom = (y0 - 2.0 * y1 + y2);
+        double offset = denom != 0.0 ? 0.5 * (y0 - y2) / denom : 0.0;
+        double bin = static_cast<double>(i) + offset;
+        peaks.push_back({ bin * bin_to_hz, y1 });
+    }
+
+    if (peaks.size() > max_peaks) {
+        std::partial_sort(peaks.begin(), peaks.begin() + max_peaks, peaks.end(),
+                          [](const SpectralPeak& a, const SpectralPeak& b) {
+                              return a.magnitude > b.magnitude;
+                          });
+        peaks.resize(max_peaks);
+    }
+    std::sort(peaks.begin(), peaks.end(),
+              [](const SpectralPeak& a, const SpectralPeak& b) {
+                  return a.frequency_hz < b.frequency_hz;
+              });
+    return peaks;
+}
+
 } // namespace bench

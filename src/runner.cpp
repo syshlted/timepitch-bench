@@ -1,12 +1,71 @@
 #include "runner.h"
 #include "fft.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <vector>
 
 namespace bench {
+
+// Least-squares fit of y = A + B*x + C*x^2 to n samples. Returns false if
+// the system is singular or n < 3.
+static bool fit_quadratic(const std::vector<double>& xs,
+                          const std::vector<double>& ys,
+                          double& A, double& B, double& C) {
+    const std::size_t n = xs.size();
+    if (n < 3 || ys.size() != n) return false;
+    double S0 = static_cast<double>(n), S1 = 0, S2 = 0, S3 = 0, S4 = 0;
+    double T0 = 0, T1 = 0, T2 = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        double x = xs[i], y = ys[i];
+        double x2 = x * x;
+        S1 += x; S2 += x2; S3 += x2 * x; S4 += x2 * x2;
+        T0 += y; T1 += y * x; T2 += y * x2;
+    }
+    // 3x3 system: [S0 S1 S2; S1 S2 S3; S2 S3 S4] [A;B;C] = [T0;T1;T2]
+    double m[3][4] = {
+        {S0, S1, S2, T0},
+        {S1, S2, S3, T1},
+        {S2, S3, S4, T2},
+    };
+    for (int i = 0; i < 3; ++i) {
+        int piv = i;
+        for (int r = i + 1; r < 3; ++r)
+            if (std::fabs(m[r][i]) > std::fabs(m[piv][i])) piv = r;
+        if (std::fabs(m[piv][i]) < 1e-12) return false;
+        if (piv != i) for (int c = 0; c < 4; ++c) std::swap(m[i][c], m[piv][c]);
+        for (int r = 0; r < 3; ++r) {
+            if (r == i) continue;
+            double f = m[r][i] / m[i][i];
+            for (int c = i; c < 4; ++c) m[r][c] -= f * m[i][c];
+        }
+    }
+    A = m[0][3] / m[0][0];
+    B = m[1][3] / m[1][1];
+    C = m[2][3] / m[2][2];
+    return true;
+}
+
+// Fit a Gaussian envelope to spectral peaks: log(magnitude) = A + B*x + C*x^2
+// where x = log2(freq). Returns mu (Hz) and sigma (octaves) via outputs.
+static bool fit_gaussian_envelope(const std::vector<SpectralPeak>& peaks,
+                                  double& mu_hz, double& sigma_oct) {
+    std::vector<double> xs, ys;
+    for (auto& p : peaks) {
+        if (p.magnitude <= 0.0) continue;
+        xs.push_back(std::log2(p.frequency_hz));
+        ys.push_back(std::log(p.magnitude));
+    }
+    double A_, B_, C_;
+    if (!fit_quadratic(xs, ys, A_, B_, C_)) return false;
+    if (C_ >= 0.0) return false;
+    mu_hz     = std::pow(2.0, -B_ / (2.0 * C_));
+    sigma_oct = std::sqrt(-1.0 / (2.0 * C_));
+    return true;
+}
 
 // Pull one channel out of an interleaved stereo buffer.
 static std::vector<float> take_left(const std::vector<float>& interleaved,
@@ -40,7 +99,7 @@ RunResult run_one(Stretcher& s, const RunOptions& opts) {
         static_cast<std::size_t>(opts.duration_seconds * opts.sample_rate);
 
     auto input = generate_signal(opts.signal, opts.sample_rate, opts.channels,
-                                 total_in_frames);
+                                 total_in_frames, opts.shepard_sweep_rate);
 
     // Output buffer sized generously for the worst-case stretch ratio plus
     // tail. The algorithm may return less.
@@ -97,6 +156,75 @@ RunResult run_one(Stretcher& s, const RunOptions& opts) {
         r.quality.expected_hz = expected_hz;
         r.quality.detected_hz = detected;
         r.quality.pitch_error_cents = cents_between(expected_hz, detected);
+    } else if (opts.signal == SignalKind::Shepard) {
+        // Take a mid-buffer window of input and output (where stretcher
+        // latency tails are irrelevant) and compare peak structure.
+        const std::size_t win = 8192;
+        auto mono_in  = take_left(input,  opts.channels);
+        auto mono_out = take_left(output, opts.channels);
+
+        auto slice_mid = [&](const std::vector<float>& v) {
+            std::vector<float> w;
+            if (v.size() < win) { w = v; return w; }
+            std::size_t start = (v.size() - win) / 2;
+            w.assign(v.begin() + start, v.begin() + start + win);
+            return w;
+        };
+
+        auto in_win  = slice_mid(mono_in);
+        auto out_win = slice_mid(mono_out);
+
+        auto in_peaks  = find_top_peaks(in_win,  opts.sample_rate,
+                                        opts.fft_size, 8);
+        auto out_peaks = find_top_peaks(out_win, opts.sample_rate,
+                                        opts.fft_size, 8);
+
+        for (auto& p : in_peaks)  r.quality.shepard_input_peaks_hz.push_back(p.frequency_hz);
+        for (auto& p : out_peaks) r.quality.shepard_output_peaks_hz.push_back(p.frequency_hz);
+
+        // Adjacent-octave ratio in output: median of f[i+1]/f[i].
+        if (out_peaks.size() >= 2) {
+            std::vector<double> ratios;
+            for (std::size_t i = 1; i < out_peaks.size(); ++i) {
+                ratios.push_back(out_peaks[i].frequency_hz /
+                                 out_peaks[i - 1].frequency_hz);
+            }
+            std::sort(ratios.begin(), ratios.end());
+            r.quality.shepard_median_octave_ratio = ratios[ratios.size() / 2];
+        }
+
+        // Gaussian envelope fit on both input and output peaks. Comparing
+        // output-vs-input cancels the analysis-side window/peak-amplitude
+        // bias that affects both equally.
+        double mu, sig;
+        if (out_peaks.size() >= 3 && fit_gaussian_envelope(out_peaks, mu, sig)) {
+            r.quality.shepard_envelope_center_hz = mu;
+            r.quality.shepard_envelope_sigma_oct = sig;
+            r.quality.shepard_envelope_fit_ok    = true;
+        }
+        if (in_peaks.size() >= 3 && fit_gaussian_envelope(in_peaks, mu, sig)) {
+            r.quality.shepard_input_envelope_center_hz = mu;
+            r.quality.shepard_input_envelope_sigma_oct = sig;
+            r.quality.shepard_input_envelope_fit_ok    = true;
+        }
+
+        // Observed pitch ratio: for each output peak, find nearest input peak
+        // in log-freq; take median of out/in ratio.
+        if (!out_peaks.empty() && !in_peaks.empty()) {
+            std::vector<double> pr;
+            for (auto& op : out_peaks) {
+                double best_ratio = 0.0;
+                double best_log_dist = 1e9;
+                for (auto& ip : in_peaks) {
+                    double r_ = op.frequency_hz / ip.frequency_hz;
+                    double d  = std::fabs(std::log2(r_));
+                    if (d < best_log_dist) { best_log_dist = d; best_ratio = r_; }
+                }
+                pr.push_back(best_ratio);
+            }
+            std::sort(pr.begin(), pr.end());
+            r.quality.shepard_observed_pitch_ratio = pr[pr.size() / 2];
+        }
     }
 
     return r;
@@ -123,6 +251,47 @@ void print_result(const RunResult& r) {
         std::printf("  expected=%.2f Hz  detected=%.2f Hz  error=%.2f cents\n",
                     r.quality.expected_hz, r.quality.detected_hz,
                     r.quality.pitch_error_cents);
+    }
+    if (r.opts.signal == SignalKind::Shepard) {
+        std::printf("  input_peaks_hz= ");
+        for (double f : r.quality.shepard_input_peaks_hz)
+            std::printf("%.1f ", f);
+        std::printf("\n  output_peaks_hz=");
+        for (double f : r.quality.shepard_output_peaks_hz)
+            std::printf("%.1f ", f);
+        std::printf("\n");
+        std::printf("  median_octave_ratio=%.4f (expect ~2.0)\n",
+                    r.quality.shepard_median_octave_ratio);
+        std::printf("  observed_pitch_ratio=%.4f (expect ~%.4f)\n",
+                    r.quality.shepard_observed_pitch_ratio,
+                    r.opts.pitch_scale);
+        if (r.quality.shepard_envelope_fit_ok) {
+            double expected_center = 500.0 * r.opts.pitch_scale;
+            std::printf("  envelope_center=%.1f Hz (expect ~%.1f)  "
+                        "envelope_sigma=%.3f oct (expect ~2.000)\n",
+                        r.quality.shepard_envelope_center_hz,
+                        expected_center,
+                        r.quality.shepard_envelope_sigma_oct);
+        } else {
+            std::printf("  envelope fit: insufficient data\n");
+        }
+        if (r.quality.shepard_envelope_fit_ok &&
+            r.quality.shepard_input_envelope_fit_ok) {
+            // Expected output envelope: input envelope shifted by pitch_scale
+            // (sigma unchanged). Compare actual delta vs expected delta.
+            double in_mu     = r.quality.shepard_input_envelope_center_hz;
+            double out_mu    = r.quality.shepard_envelope_center_hz;
+            double in_sigma  = r.quality.shepard_input_envelope_sigma_oct;
+            double out_sigma = r.quality.shepard_envelope_sigma_oct;
+            double observed_shift_oct = std::log2(out_mu / in_mu);
+            double expected_shift_oct = std::log2(r.opts.pitch_scale);
+            double center_err_cents = (observed_shift_oct - expected_shift_oct)
+                                      * 1200.0;
+            double sigma_err = out_sigma - in_sigma;
+            std::printf("  envelope_vs_input: center_err=%+.1f cents  "
+                        "sigma_err=%+.4f oct\n",
+                        center_err_cents, sigma_err);
+        }
     }
     std::printf("\n");
 }
