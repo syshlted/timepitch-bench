@@ -1,0 +1,129 @@
+{
+"schema_version": 1,
+"timestamp_utc": "2026-05-21T19:08:40Z",
+"params": {
+  "signal": "shepard",
+  "time_ratio": 1,
+  "pitch_scale": 1.3348,
+  "block_size": 512,
+  "sample_rate": 48000,
+  "channels": 2,
+  "duration_seconds": 5,
+  "fft_size": 16384,
+  "shepard_sweep_rate": 0.5,
+  "measure_latency": false
+},
+"build": {
+  "type": "Release",
+  "compiler_id": "GNU",
+  "compiler_version": "15.2.1",
+  "compiler_flags": "-O3 -DNDEBUG",
+  "build_timestamp": "2026-05-21T19:03:02Z",
+  "dsp_bench_git_rev": "2d2e6ed",
+  "dsp_bench_git_dirty": true
+},
+"libraries": {
+  "signalsmith": {"git_rev": "57b93f4", "tag": "main"},
+  "soundtouch":  {"git_rev": "e83424d", "tag": "2.3.3"},
+  "rubberband":  {"git_rev": "1d95888", "tag": "v4.0.0"}
+},
+"host": {
+  "hostname": "vidiot01",
+  "uname_sysname": "Linux",
+  "uname_release": "6.19.14-100.fc42.x86_64",
+  "uname_version": "#1 SMP PREEMPT_DYNAMIC Thu Apr 23 16:30:11 UTC 2026",
+  "uname_machine": "x86_64",
+  "cpu_model": "Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz",
+  "logical_cores": 8,
+  "cpu_flags": ["fpu","vme","de","pse","tsc","msr","pae","mce","cx8","apic","sep","mtrr","pge","mca","cmov","pat","pse36","clflush","dts","acpi","mmx","fxsr","sse","sse2","ss","ht","tm","pbe","syscall","nx","pdpe1gb","rdtscp","lm","constant_tsc","art","arch_perfmon","pebs","bts","rep_good","nopl","xtopology","nonstop_tsc","cpuid","aperfmperf","pni","pclmulqdq","dtes64","monitor","ds_cpl","vmx","est","tm2","ssse3","sdbg","fma","cx16","xtpr","pdcm","pcid","sse4_1","sse4_2","x2apic","movbe","popcnt","tsc_deadline_timer","aes","xsave","avx","f16c","rdrand","lahf_lm","abm","3dnowprefetch","cpuid_fault","epb","pti","ssbd","ibrs","ibpb","stibp","tpr_shadow","flexpriority","ept","vpid","ept_ad","fsgsbase","tsc_adjust","bmi1","avx2","smep","bmi2","erms","invpcid","mpx","rdseed","adx","smap","clflushopt","intel_pt","xsaveopt","xsavec","xgetbv1","xsaves","dtherm","ida","arat","pln","pts","hwp","hwp_notify","hwp_act_window","hwp_epp","vnmi","md_clear","flush_l1d","arch_capabilities"]
+},
+"results": [
+{
+  "library": "signalsmith",
+  "timing": {
+    "wall_total_ms": 84.6795,
+    "mean_us_per_call": 180.553,
+    "p95_us_per_call": 496.586,
+    "realtime_factor": 59.0462,
+    "calls": 469,
+    "input_frames": 240000,
+    "output_frames": 240000
+  },
+  "peak_rss_kb": 10944,
+  "quality": {
+    "shepard": {
+      "input_peaks_hz": [65.1959,130.512,261.963,522.96,1046.29,2092.54,4184.81],
+      "output_peaks_hz": [85.4301,168.928,336.058,671.933,1340.49,2681.19,5351.36],
+      "median_octave_ratio": 1.99589,
+      "observed_pitch_ratio": 1.28285,
+      "envelope": {
+        "center_hz": 446.138,
+        "sigma_oct": 1.6973,
+        "input_center_hz": 335.581,
+        "input_sigma_oct": 1.75105,
+        "fit_ok": true,
+        "input_fit_ok": true
+      }
+    }
+  }
+},
+{
+  "library": "soundtouch",
+  "timing": {
+    "wall_total_ms": 13.451,
+    "mean_us_per_call": 28.6802,
+    "p95_us_per_call": 150.042,
+    "realtime_factor": 366.331,
+    "calls": 469,
+    "input_frames": 240000,
+    "output_frames": 236521
+  },
+  "peak_rss_kb": 12992,
+  "quality": {
+    "shepard": {
+      "input_peaks_hz": [65.1959,130.512,261.963,522.96,1046.29,2092.54,4184.81],
+      "output_peaks_hz": [83.4765,173.301,346.157,692.555,1389.43,2755.06,2788.84,5588.81],
+      "median_octave_ratio": 2.0007,
+      "observed_pitch_ratio": 1.32786,
+      "envelope": {
+        "center_hz": 473.193,
+        "sigma_oct": 1.71044,
+        "input_center_hz": 335.581,
+        "input_sigma_oct": 1.75105,
+        "fit_ok": true,
+        "input_fit_ok": true
+      }
+    }
+  }
+},
+{
+  "library": "rubberband",
+  "timing": {
+    "wall_total_ms": 648.756,
+    "mean_us_per_call": 1383.28,
+    "p95_us_per_call": 1452.54,
+    "realtime_factor": 7.53217,
+    "calls": 469,
+    "input_frames": 240000,
+    "output_frames": 234554
+  },
+  "peak_rss_kb": 14140,
+  "quality": {
+    "shepard": {
+      "input_peaks_hz": [65.1959,130.512,261.963,522.96,1046.29,2092.54,4184.81],
+      "output_peaks_hz": [86.353,171.797,344.477,688.333,1376.02,2750.98,5507.61],
+      "median_octave_ratio": 1.99924,
+      "observed_pitch_ratio": 1.31609,
+      "envelope": {
+        "center_hz": 433.15,
+        "sigma_oct": 1.79576,
+        "input_center_hz": 335.581,
+        "input_sigma_oct": 1.75105,
+        "fit_ok": true,
+        "input_fit_ok": true
+      }
+    }
+  }
+}
+]
+}

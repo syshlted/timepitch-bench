@@ -230,55 +230,57 @@ RunResult run_one(Stretcher& s, const RunOptions& opts) {
     return r;
 }
 
-void print_result(const RunResult& r) {
-    std::printf("=== %s ===\n", r.stretcher_name.c_str());
-    std::printf("  signal=%s time_ratio=%.3f pitch_scale=%.3f block=%d\n",
-                signal_kind_name(r.opts.signal),
-                r.opts.time_ratio, r.opts.pitch_scale, r.opts.block_size);
-    std::printf("  input_frames=%zu output_frames=%zu calls=%zu\n",
-                r.timing.input_frames, r.timing.output_frames, r.timing.calls);
-    std::printf("  wall_total=%.3f ms  mean/call=%.2f us  p95/call=%.2f us\n",
-                r.timing.total_wall_seconds * 1000.0,
-                r.timing.mean_wall_us_per_call(),
-                r.timing.p95_wall_us_per_call());
-    std::printf("  realtime_factor=%.2fx  (>1 = faster than realtime)\n",
-                r.timing.real_time_factor(r.opts.sample_rate));
-    std::printf("  peak_rss=%zu KB\n", r.peak_rss_kb_after);
+std::string format_result(const RunResult& r) {
+    char buf[512];
+    std::string o;
+    auto add = [&](const char* fmt, auto... args) {
+        std::snprintf(buf, sizeof(buf), fmt, args...);
+        o += buf;
+    };
+    add("=== %s ===\n", r.stretcher_name.c_str());
+    add("  signal=%s time_ratio=%.3f pitch_scale=%.3f block=%d\n",
+        signal_kind_name(r.opts.signal),
+        r.opts.time_ratio, r.opts.pitch_scale, r.opts.block_size);
+    add("  input_frames=%zu output_frames=%zu calls=%zu\n",
+        r.timing.input_frames, r.timing.output_frames, r.timing.calls);
+    add("  wall_total=%.3f ms  mean/call=%.2f us  p95/call=%.2f us\n",
+        r.timing.total_wall_seconds * 1000.0,
+        r.timing.mean_wall_us_per_call(),
+        r.timing.p95_wall_us_per_call());
+    add("  realtime_factor=%.2fx  (>1 = faster than realtime)\n",
+        r.timing.real_time_factor(r.opts.sample_rate));
+    add("  peak_rss=%zu KB\n", r.peak_rss_kb_after);
     if (r.opts.measure_latency) {
-        std::printf("  reported_latency=%d frames\n", r.reported_latency_frames);
+        add("  reported_latency=%d frames\n", r.reported_latency_frames);
     }
     if (r.opts.signal == SignalKind::Sine) {
-        std::printf("  expected=%.2f Hz  detected=%.2f Hz  error=%.2f cents\n",
-                    r.quality.expected_hz, r.quality.detected_hz,
-                    r.quality.pitch_error_cents);
+        add("  expected=%.2f Hz  detected=%.2f Hz  error=%.2f cents\n",
+            r.quality.expected_hz, r.quality.detected_hz,
+            r.quality.pitch_error_cents);
     }
     if (r.opts.signal == SignalKind::Shepard) {
-        std::printf("  input_peaks_hz= ");
-        for (double f : r.quality.shepard_input_peaks_hz)
-            std::printf("%.1f ", f);
-        std::printf("\n  output_peaks_hz=");
-        for (double f : r.quality.shepard_output_peaks_hz)
-            std::printf("%.1f ", f);
-        std::printf("\n");
-        std::printf("  median_octave_ratio=%.4f (expect ~2.0)\n",
-                    r.quality.shepard_median_octave_ratio);
-        std::printf("  observed_pitch_ratio=%.4f (expect ~%.4f)\n",
-                    r.quality.shepard_observed_pitch_ratio,
-                    r.opts.pitch_scale);
+        o += "  input_peaks_hz= ";
+        for (double f : r.quality.shepard_input_peaks_hz) add("%.1f ", f);
+        o += "\n  output_peaks_hz=";
+        for (double f : r.quality.shepard_output_peaks_hz) add("%.1f ", f);
+        o += "\n";
+        add("  median_octave_ratio=%.4f (expect ~2.0)\n",
+            r.quality.shepard_median_octave_ratio);
+        add("  observed_pitch_ratio=%.4f (expect ~%.4f)\n",
+            r.quality.shepard_observed_pitch_ratio,
+            r.opts.pitch_scale);
         if (r.quality.shepard_envelope_fit_ok) {
             double expected_center = 500.0 * r.opts.pitch_scale;
-            std::printf("  envelope_center=%.1f Hz (expect ~%.1f)  "
-                        "envelope_sigma=%.3f oct (expect ~2.000)\n",
-                        r.quality.shepard_envelope_center_hz,
-                        expected_center,
-                        r.quality.shepard_envelope_sigma_oct);
+            add("  envelope_center=%.1f Hz (expect ~%.1f)  "
+                "envelope_sigma=%.3f oct (expect ~2.000)\n",
+                r.quality.shepard_envelope_center_hz,
+                expected_center,
+                r.quality.shepard_envelope_sigma_oct);
         } else {
-            std::printf("  envelope fit: insufficient data\n");
+            o += "  envelope fit: insufficient data\n";
         }
         if (r.quality.shepard_envelope_fit_ok &&
             r.quality.shepard_input_envelope_fit_ok) {
-            // Expected output envelope: input envelope shifted by pitch_scale
-            // (sigma unchanged). Compare actual delta vs expected delta.
             double in_mu     = r.quality.shepard_input_envelope_center_hz;
             double out_mu    = r.quality.shepard_envelope_center_hz;
             double in_sigma  = r.quality.shepard_input_envelope_sigma_oct;
@@ -288,12 +290,17 @@ void print_result(const RunResult& r) {
             double center_err_cents = (observed_shift_oct - expected_shift_oct)
                                       * 1200.0;
             double sigma_err = out_sigma - in_sigma;
-            std::printf("  envelope_vs_input: center_err=%+.1f cents  "
-                        "sigma_err=%+.4f oct\n",
-                        center_err_cents, sigma_err);
+            add("  envelope_vs_input: center_err=%+.1f cents  "
+                "sigma_err=%+.4f oct\n",
+                center_err_cents, sigma_err);
         }
     }
-    std::printf("\n");
+    o += "\n";
+    return o;
+}
+
+void print_result(const RunResult& r) {
+    std::fputs(format_result(r).c_str(), stdout);
 }
 
 } // namespace bench

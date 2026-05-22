@@ -1,0 +1,39 @@
+=== signalsmith ===
+  signal=shepard time_ratio=1.500 pitch_scale=1.000 block=512
+  input_frames=240000 output_frames=360000 calls=469
+  wall_total=129.111 ms  mean/call=275.29 us  p95/call=511.09 us
+  realtime_factor=58.09x  (>1 = faster than realtime)
+  peak_rss=12680 KB
+  input_peaks_hz= 65.2 130.5 262.0 523.0 1046.3 2092.5 4184.8 
+  output_peaks_hz=63.4 126.3 252.4 505.1 1011.8 2024.7 4049.4 
+  median_octave_ratio=2.0011 (expect ~2.0)
+  observed_pitch_ratio=0.9676 (expect ~1.0000)
+  envelope_center=365.0 Hz (expect ~500.0)  envelope_sigma=1.722 oct (expect ~2.000)
+  envelope_vs_input: center_err=+145.3 cents  sigma_err=-0.0293 oct
+
+=== soundtouch ===
+  signal=shepard time_ratio=1.500 pitch_scale=1.000 block=512
+  input_frames=240000 output_frames=353472 calls=469
+  wall_total=13.615 ms  mean/call=29.03 us  p95/call=108.48 us
+  realtime_factor=540.89x  (>1 = faster than realtime)
+  peak_rss=15240 KB
+  input_peaks_hz= 65.2 130.5 262.0 523.0 1046.3 2092.5 4184.8 
+  output_peaks_hz=65.2 129.4 258.6 517.3 1036.3 2060.4 2080.9 4170.1 
+  median_octave_ratio=1.9989 (expect ~2.0)
+  observed_pitch_ratio=0.9912 (expect ~1.0000)
+  envelope_center=384.2 Hz (expect ~500.0)  envelope_sigma=1.682 oct (expect ~2.000)
+  envelope_vs_input: center_err=+234.3 cents  sigma_err=-0.0691 oct
+
+=== rubberband ===
+  signal=shepard time_ratio=1.500 pitch_scale=1.000 block=512
+  input_frames=240000 output_frames=353940 calls=469
+  wall_total=765.522 ms  mean/call=1632.24 us  p95/call=1702.71 us
+  realtime_factor=9.63x  (>1 = faster than realtime)
+  peak_rss=19244 KB
+  input_peaks_hz= 65.2 130.5 262.0 523.0 1046.3 2092.5 4184.8 
+  output_peaks_hz=64.7 129.4 258.8 518.0 1036.4 2073.1 4144.8 
+  median_octave_ratio=2.0002 (expect ~2.0)
+  observed_pitch_ratio=0.9906 (expect ~1.0000)
+  envelope_center=359.5 Hz (expect ~500.0)  envelope_sigma=1.760 oct (expect ~2.000)
+  envelope_vs_input: center_err=+119.0 cents  sigma_err=+0.0085 oct
+

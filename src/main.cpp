@@ -1,3 +1,5 @@
+#include "provenance.h"
+#include "report.h"
 #include "runner.h"
 #include "stretcher.h"
 
@@ -50,6 +52,8 @@ static void usage(const char* argv0) {
         "  --sample-rate <hz>      (default: 48000)\n"
         "  --measure-latency       report each library's reported algorithmic latency\n"
         "  --shepard-sweep-rate <oct/sec>  (default: 0.5; 0 = stationary)\n"
+        "  --out-dir <path>        directory for report files (default: ./reports)\n"
+        "  --no-save               do not write report files, stdout only\n"
         "  --list                  list available libraries and exit\n",
         argv0);
 }
@@ -57,6 +61,8 @@ static void usage(const char* argv0) {
 int main(int argc, char** argv) {
     bench::RunOptions opts;
     std::string library = "all";
+    std::string out_dir = "reports";
+    bool save = true;
 
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -73,6 +79,8 @@ int main(int argc, char** argv) {
         else if (a == "--sample-rate")   opts.sample_rate = std::stoi(next());
         else if (a == "--measure-latency") opts.measure_latency = true;
         else if (a == "--shepard-sweep-rate") opts.shepard_sweep_rate = std::stod(next());
+        else if (a == "--out-dir")       out_dir = next();
+        else if (a == "--no-save")       save = false;
         else if (a == "--list") {
             for (auto& n : bench::available_stretchers()) std::printf("%s\n", n.c_str());
             return 0;
@@ -85,11 +93,31 @@ int main(int argc, char** argv) {
     if (library == "all") targets = bench::available_stretchers();
     else targets.push_back(library);
 
+    std::vector<bench::RunResult> results;
+    std::string text_mirror;
+
     for (const auto& name : targets) {
         auto s = bench::make_stretcher(name);
         if (!s) { std::fprintf(stderr, "unknown or disabled library: %s\n", name.c_str()); continue; }
         auto r = bench::run_one(*s, opts);
-        bench::print_result(r);
+        std::string formatted = bench::format_result(r);
+        std::fputs(formatted.c_str(), stdout);
+        text_mirror += formatted;
+        results.push_back(std::move(r));
+    }
+
+    if (save && !results.empty()) {
+        auto host = bench::gather_host_info();
+        std::string ts        = bench::utc_iso_timestamp();
+        std::string ts_file   = bench::utc_iso_timestamp_filename();
+        std::string path = bench::write_report(out_dir, ts, ts_file, host,
+                                               opts, results, text_mirror);
+        if (path.empty()) {
+            std::fprintf(stderr, "warning: failed to write report to %s\n",
+                         out_dir.c_str());
+        } else {
+            std::fprintf(stderr, "report: %s\n", path.c_str());
+        }
     }
     return 0;
 }

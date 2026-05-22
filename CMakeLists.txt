@@ -87,6 +87,8 @@ set(BENCH_SOURCES
     src/metrics.cpp
     src/runner.cpp
     src/fft.cpp
+    src/provenance.cpp
+    src/report.cpp
 )
 
 if(BENCH_ENABLE_SIGNALSMITH)
@@ -113,3 +115,68 @@ if(BENCH_ENABLE_RUBBERBAND)
     target_compile_definitions(dsp_bench PRIVATE BENCH_HAS_RUBBERBAND=1)
     target_link_libraries(dsp_bench PRIVATE rubberband_static)
 endif()
+
+# -----------------------------------------------------------------------------
+# Provenance: capture git revs and build metadata into build_info.h
+# -----------------------------------------------------------------------------
+find_package(Git QUIET)
+
+function(_git_rev dir out_var)
+    set(${out_var} "unknown" PARENT_SCOPE)
+    if(NOT GIT_EXECUTABLE OR NOT IS_DIRECTORY "${dir}")
+        return()
+    endif()
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} -C "${dir}" rev-parse --short HEAD
+        OUTPUT_VARIABLE rev OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE rc ERROR_QUIET)
+    if(rc EQUAL 0 AND rev)
+        set(${out_var} "${rev}" PARENT_SCOPE)
+    endif()
+endfunction()
+
+function(_git_dirty dir out_var)
+    set(${out_var} "false" PARENT_SCOPE)
+    if(NOT GIT_EXECUTABLE OR NOT IS_DIRECTORY "${dir}")
+        return()
+    endif()
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} -C "${dir}" status --porcelain -- "${dir}"
+        OUTPUT_VARIABLE st OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE rc ERROR_QUIET)
+    if(rc EQUAL 0 AND st)
+        set(${out_var} "true" PARENT_SCOPE)
+    endif()
+endfunction()
+
+_git_rev("${CMAKE_SOURCE_DIR}" BENCH_DSPBENCH_GIT_REV)
+_git_dirty("${CMAKE_SOURCE_DIR}" BENCH_DSPBENCH_GIT_DIRTY)
+
+set(BENCH_SIGNALSMITH_GIT_REV "n/a")
+set(BENCH_SIGNALSMITH_TAG     "n/a")
+set(BENCH_SOUNDTOUCH_GIT_REV  "n/a")
+set(BENCH_SOUNDTOUCH_TAG      "n/a")
+set(BENCH_RUBBERBAND_GIT_REV  "n/a")
+set(BENCH_RUBBERBAND_TAG      "n/a")
+
+if(BENCH_ENABLE_SIGNALSMITH)
+    _git_rev("${signalsmith_stretch_SOURCE_DIR}" BENCH_SIGNALSMITH_GIT_REV)
+    set(BENCH_SIGNALSMITH_TAG "main")
+endif()
+if(BENCH_ENABLE_SOUNDTOUCH)
+    _git_rev("${soundtouch_SOURCE_DIR}" BENCH_SOUNDTOUCH_GIT_REV)
+    set(BENCH_SOUNDTOUCH_TAG "2.3.3")
+endif()
+if(BENCH_ENABLE_RUBBERBAND)
+    _git_rev("${rubberband_SOURCE_DIR}" BENCH_RUBBERBAND_GIT_REV)
+    set(BENCH_RUBBERBAND_TAG "v4.0.0")
+endif()
+
+string(TIMESTAMP BENCH_BUILD_TIMESTAMP "%Y-%m-%dT%H:%M:%SZ" UTC)
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/src/build_info.h.in
+    ${CMAKE_BINARY_DIR}/generated/build_info.h
+    @ONLY
+)
+target_include_directories(dsp_bench PRIVATE ${CMAKE_BINARY_DIR}/generated)

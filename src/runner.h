@@ -30,6 +30,7 @@ struct RunResult {
 
 RunResult run_one(Stretcher& s, const RunOptions& opts);
 
+std::string format_result(const RunResult& r);
 void print_result(const RunResult& r);
 
 } // namespace bench
