@@ -1,5 +1,7 @@
 #include "provenance.h"
 #include "report.h"
+#include "resample_runner.h"
+#include "resampler.h"
 #include "runner.h"
 #include "stretcher.h"
 
@@ -43,6 +45,7 @@ std::unique_ptr<Stretcher> make_stretcher(const std::string& name) {
 static void usage(const char* argv0) {
     std::fprintf(stderr,
         "usage: %s [options]\n"
+        "Stretcher mode (default):\n"
         "  --library <name>        signalsmith | soundtouch | rubberband | all (default: all)\n"
         "  --signal  <name>        sine | sweep | impulse | noise | shepard (default: sine)\n"
         "  --time-ratio <f>        output/input duration (default: 1.0)\n"
@@ -54,11 +57,90 @@ static void usage(const char* argv0) {
         "  --shepard-sweep-rate <oct/sec>  (default: 0.5; 0 = stationary)\n"
         "  --out-dir <path>        directory for report files (default: ./reports)\n"
         "  --no-save               do not write report files, stdout only\n"
-        "  --list                  list available libraries and exit\n",
+        "  --list                  list available stretchers and exit\n"
+        "\n"
+        "Resampler mode (--resample):\n"
+        "  --resample              switch to import-path resampler measurement mode\n"
+        "  --resample-library <n>  libsamplerate | r8brain | all (default: all)\n"
+        "  --resample-signal <n>   sine | alias | impulse | sweep | all (default: all)\n"
+        "  --src-rate <hz>         source sample rate (default: 44100)\n"
+        "  --dst-rate <hz>         destination sample rate (default: 48000)\n"
+        "  --duration <sec>        input duration in seconds (default: 2.0)\n"
+        "  --sine-hz <hz>          sine frequency for sine test (default: 1000)\n"
+        "  --list-resamplers       list available resamplers and exit\n",
         argv0);
 }
 
+namespace {
+
+int run_resample_mode(int argc, char** argv) {
+    bench::ResampleRunOptions opts;
+    opts.duration_seconds = 2.0;
+    std::string library = "all";
+    std::string signal  = "all";
+
+    for (int i = 1; i < argc; ++i) {
+        std::string a = argv[i];
+        auto next = [&]() -> std::string {
+            if (i + 1 >= argc) { usage(argv[0]); std::exit(2); }
+            return argv[++i];
+        };
+        if (a == "--resample")                {}
+        else if (a == "--resample-library")   library = next();
+        else if (a == "--resample-signal")    signal  = next();
+        else if (a == "--src-rate")           opts.src_rate = std::stoi(next());
+        else if (a == "--dst-rate")           opts.dst_rate = std::stoi(next());
+        else if (a == "--duration")           opts.duration_seconds = std::stod(next());
+        else if (a == "--sine-hz")            opts.sine_hz = std::stod(next());
+        else if (a == "--list-resamplers") {
+            for (auto& n : bench::available_resamplers()) std::printf("%s\n", n.c_str());
+            return 0;
+        }
+        else if (a == "-h" || a == "--help") { usage(argv[0]); return 0; }
+        else { usage(argv[0]); return 2; }
+    }
+
+    std::vector<std::string> libs;
+    if (library == "all") libs = bench::available_resamplers();
+    else libs.push_back(library);
+
+    std::vector<bench::ResampleSignal> signals;
+    if (signal == "all") {
+        // Sweep is omitted from default-all: spectral_snr_db on a sweep is
+        // dominated by group-delay alignment and gives a measurement-floor
+        // number that doesn't distinguish libraries. Run --resample-signal
+        // sweep explicitly if you want the raw output for offline plotting.
+        signals = {bench::ResampleSignal::Sine,
+                   bench::ResampleSignal::SineNearSrcNy,
+                   bench::ResampleSignal::Impulse};
+    } else {
+        signals.push_back(bench::parse_resample_signal(signal));
+    }
+
+    for (const auto& name : libs) {
+        auto r = bench::make_resampler(name);
+        if (!r) {
+            std::fprintf(stderr, "unknown or disabled resampler: %s\n", name.c_str());
+            continue;
+        }
+        for (auto sig : signals) {
+            auto sub_opts = opts;
+            sub_opts.signal = sig;
+            auto res = bench::run_one_resample(*r, sub_opts);
+            bench::print_resample_result(res);
+        }
+    }
+    return 0;
+}
+
+} // namespace
+
 int main(int argc, char** argv) {
+    // Resampler mode is a separate sub-command, triggered by --resample anywhere.
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "--resample") return run_resample_mode(argc, argv);
+    }
+
     bench::RunOptions opts;
     std::string library = "all";
     std::string out_dir = "reports";

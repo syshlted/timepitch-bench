@@ -11,9 +11,11 @@ endif()
 
 add_compile_options(-Wall -Wextra -Wno-unused-parameter)
 
-option(BENCH_ENABLE_SIGNALSMITH "Build Signalsmith Stretch wrapper" ON)
-option(BENCH_ENABLE_SOUNDTOUCH  "Build SoundTouch wrapper"          ON)
-option(BENCH_ENABLE_RUBBERBAND  "Build Rubber Band wrapper"         ON)
+option(BENCH_ENABLE_SIGNALSMITH   "Build Signalsmith Stretch wrapper" ON)
+option(BENCH_ENABLE_SOUNDTOUCH    "Build SoundTouch wrapper"          ON)
+option(BENCH_ENABLE_RUBBERBAND    "Build Rubber Band wrapper"         ON)
+option(BENCH_ENABLE_LIBSAMPLERATE "Build libsamplerate wrapper (import-path resampler, D-016)" ON)
+option(BENCH_ENABLE_R8BRAIN       "Build r8brain-free wrapper (import-path resampler, A/B vs libsamplerate)" ON)
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
@@ -79,6 +81,44 @@ if(BENCH_ENABLE_RUBBERBAND)
 endif()
 
 # -----------------------------------------------------------------------------
+# libsamplerate — BSD-2; offline resampler for the .mloop import path (D-016).
+# Not a stretcher candidate; parallel slot.
+# -----------------------------------------------------------------------------
+if(BENCH_ENABLE_LIBSAMPLERATE)
+    set(LIBSAMPLERATE_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(LIBSAMPLERATE_INSTALL  OFF CACHE BOOL "" FORCE)
+    set(BUILD_TESTING          OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        libsamplerate
+        GIT_REPOSITORY https://github.com/libsndfile/libsamplerate.git
+        GIT_TAG 0.2.2
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(libsamplerate)
+endif()
+
+# -----------------------------------------------------------------------------
+# r8brain-free — MIT. version-6.5 still ships an r8bbase.cpp with out-of-line
+# static definitions (cache state for the fractional-delay filter bank).
+# Compile it into a small static lib. Newer trunk is header-only but we pin
+# to a tagged release for reproducibility.
+# -----------------------------------------------------------------------------
+if(BENCH_ENABLE_R8BRAIN)
+    FetchContent_Declare(
+        r8brain
+        GIT_REPOSITORY https://github.com/avaneev/r8brain-free-src.git
+        GIT_TAG version-6.5
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(r8brain)
+    add_library(r8brain_static STATIC
+        ${r8brain_SOURCE_DIR}/r8bbase.cpp
+    )
+    target_include_directories(r8brain_static PUBLIC ${r8brain_SOURCE_DIR})
+    target_compile_options(r8brain_static PRIVATE -Wno-unused -Wno-sign-compare)
+endif()
+
+# -----------------------------------------------------------------------------
 # Benchmark executable
 # -----------------------------------------------------------------------------
 set(BENCH_SOURCES
@@ -89,6 +129,8 @@ set(BENCH_SOURCES
     src/fft.cpp
     src/provenance.cpp
     src/report.cpp
+    src/resampler_registry.cpp
+    src/resample_runner.cpp
 )
 
 if(BENCH_ENABLE_SIGNALSMITH)
@@ -99,6 +141,12 @@ if(BENCH_ENABLE_SOUNDTOUCH)
 endif()
 if(BENCH_ENABLE_RUBBERBAND)
     list(APPEND BENCH_SOURCES src/stretcher_rubberband.cpp)
+endif()
+if(BENCH_ENABLE_LIBSAMPLERATE)
+    list(APPEND BENCH_SOURCES src/resampler_libsamplerate.cpp)
+endif()
+if(BENCH_ENABLE_R8BRAIN)
+    list(APPEND BENCH_SOURCES src/resampler_r8brain.cpp)
 endif()
 
 add_executable(dsp_bench ${BENCH_SOURCES})
@@ -114,6 +162,14 @@ endif()
 if(BENCH_ENABLE_RUBBERBAND)
     target_compile_definitions(dsp_bench PRIVATE BENCH_HAS_RUBBERBAND=1)
     target_link_libraries(dsp_bench PRIVATE rubberband_static)
+endif()
+if(BENCH_ENABLE_LIBSAMPLERATE)
+    target_compile_definitions(dsp_bench PRIVATE BENCH_HAS_LIBSAMPLERATE=1)
+    target_link_libraries(dsp_bench PRIVATE samplerate)
+endif()
+if(BENCH_ENABLE_R8BRAIN)
+    target_compile_definitions(dsp_bench PRIVATE BENCH_HAS_R8BRAIN=1)
+    target_link_libraries(dsp_bench PRIVATE r8brain_static)
 endif()
 
 # -----------------------------------------------------------------------------
