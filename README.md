@@ -1,11 +1,30 @@
 # dsp-bench
 
-Performance and quality benchmark harness comparing time-stretch / pitch-shift
-libraries under consideration for MondoLoop:
+A reproducible performance and quality benchmark harness for time-stretch /
+pitch-shift and sample-rate-conversion libraries. Originally built to inform
+DSP-library selection in the [MondoLoop](https://systemhalted.com/blog) mobile
+DAW project; extracted here so the methodology and numbers can be reproduced
+independently.
 
-- **Signalsmith Stretch** (MIT)
-- **SoundTouch** (LGPL)
-- **Rubber Band** (LGPL / commercial)
+**Time-stretch / pitch-shift libraries compared:**
+
+- [Signalsmith Stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch) — MIT
+- [SoundTouch](https://www.surina.net/soundtouch/) — LGPL
+- [Rubber Band](https://breakfastquay.com/rubberband/) — GPL / commercial
+
+**Sample-rate converters compared:**
+
+- [libsamplerate](https://github.com/libsndfile/libsamplerate) — BSD-2-Clause
+- [r8brain-free-src](https://github.com/avaneev/r8brain-free-src) — MIT
+
+### License
+
+This benchmark harness is licensed under **Apache-2.0** (see
+[LICENSE](LICENSE)). It does *not* relicense the libraries it benchmarks:
+each is pulled via CMake `FetchContent` from its upstream repository and
+remains under its own license. In particular, **enabling Rubber Band binds
+the resulting binary to GPL or to Rubber Band's commercial license** — if
+that's a problem for your use, build with `-DBENCH_ENABLE_RUBBERBAND=OFF`.
 
 ## Build
 
