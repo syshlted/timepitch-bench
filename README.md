@@ -2,7 +2,7 @@
 
 A reproducible performance and quality benchmark harness for time-stretch /
 pitch-shift and sample-rate-conversion libraries. Originally built to inform
-DSP-library selection in the [MondoLoop](https://systemhalted.com/blog) mobile
+DSP-library selection in the [MondoLoop](https://systemhalted.com) mobile
 DAW project; extracted here so the methodology and numbers can be reproduced
 independently.
 

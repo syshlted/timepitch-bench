@@ -2,7 +2,7 @@ timepitch-bench
 Copyright 2026 Jeremy Melanson
 
 This product includes software developed as part of the MondoLoop project
-(https://systemhalted.com/blog).
+(https://systemhalted.com).
 
 This benchmark harness pulls third-party DSP libraries via CMake FetchContent
 at build time. Those libraries retain their own licenses and copyrights:
