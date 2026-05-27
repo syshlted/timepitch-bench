@@ -21,10 +21,106 @@ independently.
 
 This benchmark harness is licensed under **Apache-2.0** (see
 [LICENSE](LICENSE)). It does *not* relicense the libraries it benchmarks:
-each is pulled via CMake `FetchContent` from its upstream repository and
-remains under its own license. In particular, **enabling Rubber Band binds
-the resulting binary to GPL or to Rubber Band's commercial license** — if
-that's a problem for your use, build with `-DBENCH_ENABLE_RUBBERBAND=OFF`.
+each is acquired at build time from its upstream and remains under its
+own license. In particular, **enabling Rubber Band binds the resulting
+binary to GPL or to Rubber Band's commercial license** — if that's a
+problem for your use, build with `-DBENCH_ENABLE_RUBBERBAND=OFF`.
+
+## Dependencies
+
+No upstream library source is committed to this repository. Each library
+is acquired at configure time according to the following priority order:
+
+1. **Local checkout** under `./external/<lib>/` (if present)
+2. **System package** via `pkg-config` (only if `-DBENCH_USE_SYSTEM_LIBS=ON`)
+3. **FetchContent download** from upstream Git (the default fallback)
+
+Each dependency emits one status line at configure time identifying which
+source it resolved to, e.g.:
+
+```
+-- [deps] signalsmith-stretch: FetchContent (github.com/Signalsmith-Audio/signalsmith-stretch.git @ main)
+-- [deps] libsamplerate:       system package (pkg-config samplerate 0.2.2)
+-- [deps] r8brain:             local checkout (/home/me/timepitch-bench/external/r8brain)
+```
+
+### The libraries
+
+| Library                                                                                   | Pinned ref     | License        | System pkg-config name | Notes |
+|-------------------------------------------------------------------------------------------|---------------|----------------|------------------------|-------|
+| [Signalsmith Stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch)           | `main`        | MIT            | *(not packaged)*       | Header-mostly. Must be fetched or pre-staged. |
+| [SoundTouch](https://codeberg.org/soundtouch/soundtouch)                                  | `2.3.3`       | LGPL           | `soundtouch`           | Packaged on most Linux distros (`libsoundtouch-dev` / `soundtouch-devel`). |
+| [Rubber Band](https://github.com/breakfastquay/rubberband)                                | `v4.0.0`      | GPL / commercial | `rubberband`         | Packaged on most Linux distros (`librubberband-dev`). |
+| [libsamplerate](https://github.com/libsndfile/libsamplerate)                              | `0.2.2`       | BSD-2-Clause   | `samplerate`           | Packaged on most Linux distros (`libsamplerate0-dev` / `libsamplerate-devel`). |
+| [r8brain-free-src](https://github.com/avaneev/r8brain-free-src)                           | `version-6.5` | MIT            | *(not packaged)*       | Must be fetched or pre-staged. |
+
+### Offline / locked-down networks
+
+Pre-stage everything from a machine with internet access:
+
+```sh
+scripts/fetch-deps.sh
+```
+
+This clones each pinned upstream into `./external/<lib>/`. CMake detects
+this directory and skips downloading. Re-running the script is safe — it
+skips any directory that already exists.
+
+You can also point the script at a custom location:
+
+```sh
+scripts/fetch-deps.sh /shared/timepitch-deps
+ln -s /shared/timepitch-deps ./external
+```
+
+### System packages
+
+Prefer system-installed libraries (where available) by passing
+`-DBENCH_USE_SYSTEM_LIBS=ON` at configure time:
+
+```sh
+# Debian / Ubuntu
+sudo apt install libsoundtouch-dev librubberband-dev libsamplerate0-dev pkg-config
+cmake -S . -B build -DBENCH_USE_SYSTEM_LIBS=ON
+cmake --build build -j
+```
+
+```sh
+# Fedora
+sudo dnf install soundtouch-devel rubberband-devel libsamplerate-devel pkgconfig
+cmake -S . -B build -DBENCH_USE_SYSTEM_LIBS=ON
+cmake --build build -j
+```
+
+```sh
+# macOS (Homebrew)
+brew install soundtouch rubberband libsamplerate pkg-config
+cmake -S . -B build -DBENCH_USE_SYSTEM_LIBS=ON
+cmake --build build -j
+```
+
+Signalsmith Stretch and r8brain-free are not packaged anywhere we know
+of; those two always come from either `./external/` or FetchContent,
+regardless of `BENCH_USE_SYSTEM_LIBS`.
+
+If `BENCH_USE_SYSTEM_LIBS=ON` is set but none of the three packageable
+libraries are found, configure emits a warning and falls back to
+FetchContent. Install the development packages above to silence it.
+
+### Disabling individual wrappers
+
+Each library can be disabled independently — useful for builds where
+network access is restricted or a license is incompatible with your
+distribution:
+
+```sh
+cmake -S . -B build \
+    -DBENCH_ENABLE_RUBBERBAND=OFF \
+    -DBENCH_ENABLE_SOUNDTOUCH=OFF
+```
+
+The remaining wrappers still build; the disabled ones simply don't get
+acquired or linked.
 
 ## Build
 
@@ -33,12 +129,10 @@ cmake -S . -B build
 cmake --build build -j
 ```
 
-The build pulls all three libraries via CMake `FetchContent`. To disable any
-of them (e.g. if network access is restricted or a library fails to build):
-
-```sh
-cmake -S . -B build -DBENCH_ENABLE_RUBBERBAND=OFF
-```
+The default configure resolves every dependency for you. To control where
+they come from (system packages, pre-staged checkout, FetchContent), or to
+disable individual wrappers, see the [Dependencies](#dependencies) section
+above.
 
 ## Run
 
