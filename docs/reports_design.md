@@ -83,7 +83,7 @@ instead of lost work.
 |-----------------------------------|--------------|-----|
 | Compiler ID / version / flags     | CMake configure | Stable until next reconfigure; cheaper to bake in than reprobe at runtime. |
 | Build type, build timestamp       | CMake configure | Same.                                                            |
-| dsp-bench git short SHA + dirty   | CMake configure | Identifies the bench binary itself. Dirty flag warns reviewers. |
+| timepitch-bench git short SHA + dirty   | CMake configure | Identifies the bench binary itself. Dirty flag warns reviewers. |
 | Library git SHAs + tags           | CMake configure | Resolved by FetchContent at configure time; the binary is linked against those exact trees. Runtime introspection would require each library to expose a version symbol, which not all do. |
 | Hostname, uname                   | Runtime      | Cheap; can change between runs of the same binary.              |
 | CPU model + flags                 | Runtime      | Same. Also captures whether you ran on perf or efficiency cores via the `cpu_flags` snapshot. |
@@ -97,7 +97,7 @@ the include path.
 
 The git-rev capture uses `git rev-parse --short HEAD` directly (no
 `EXISTS .git` precheck), letting git walk up to find the repo. That
-matters because `dsp-bench/` is a sub-tree of the parent MondoLoop repo:
+matters because `timepitch-bench/` is a sub-tree of the parent MondoLoop repo:
 the `.git` lives one directory up.
 
 ## Why a separate `commit-reports.sh` script

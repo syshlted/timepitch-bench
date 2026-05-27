@@ -4,8 +4,8 @@
 
 namespace bench::build_info {
 
-inline constexpr const char* dsp_bench_git_rev   = "@BENCH_DSPBENCH_GIT_REV@";
-inline constexpr const char* dsp_bench_git_dirty = "@BENCH_DSPBENCH_GIT_DIRTY@";
+inline constexpr const char* timepitch_bench_git_rev   = "@BENCH_TIMEPITCHBENCH_GIT_REV@";
+inline constexpr const char* timepitch_bench_git_dirty = "@BENCH_TIMEPITCHBENCH_GIT_DIRTY@";
 
 inline constexpr const char* build_type        = "@CMAKE_BUILD_TYPE@";
 inline constexpr const char* compiler_id       = "@CMAKE_CXX_COMPILER_ID@";

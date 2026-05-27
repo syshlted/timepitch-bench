@@ -7,7 +7,7 @@
 #   commit-reports.sh --individual      # one commit per report (each with its own summary)
 #   commit-reports.sh --dry-run         # print what would be committed, change nothing
 #
-# Reports must be in dsp-bench/reports/ relative to repo root. The script:
+# Reports must be in timepitch-bench/reports/ relative to repo root. The script:
 #   - finds untracked .json files matching the report naming convention
 #   - reads metadata from each (host, library revs, params)
 #   - composes a commit message; commits the .json + matching .txt together.
@@ -20,7 +20,7 @@ if [[ -z "${REPO_ROOT}" ]]; then
     exit 1
 fi
 
-REPORTS_DIR="${REPO_ROOT}/dsp-bench/reports"
+REPORTS_DIR="${REPO_ROOT}/timepitch-bench/reports"
 if [[ ! -d "${REPORTS_DIR}" ]]; then
     echo "error: ${REPORTS_DIR} not found" >&2
     exit 1
@@ -50,7 +50,7 @@ done
 # --- collect untracked reports ---------------------------------------------
 cd "${REPO_ROOT}"
 mapfile -t NEW_JSON < <(git ls-files --others --exclude-standard -- \
-    "dsp-bench/reports/*.json" 2>/dev/null || true)
+    "timepitch-bench/reports/*.json" 2>/dev/null || true)
 
 if [[ ${#NEW_JSON[@]} -eq 0 ]]; then
     echo "no new report files in ${REPORTS_DIR}"
@@ -86,8 +86,8 @@ summarize() {
     local sweep=$(json_str "${jf}" params.shepard_sweep_rate)
     local host=$(json_str "${jf}" host.hostname)
     local cpu=$(json_str "${jf}" host.cpu_model)
-    local dsp=$(json_str "${jf}" build.dsp_bench_git_rev)
-    local dirty=$(json_str "${jf}" build.dsp_bench_git_dirty)
+    local dsp=$(json_str "${jf}" build.timepitch_bench_git_rev)
+    local dirty=$(json_str "${jf}" build.timepitch_bench_git_dirty)
     local ssm=$(json_str "${jf}" libraries.signalsmith.git_rev)
     local stt=$(json_str "${jf}" libraries.soundtouch.git_rev)
     local rbn=$(json_str "${jf}" libraries.rubberband.git_rev)
@@ -97,7 +97,7 @@ summarize() {
         echo "  shepard_sweep_rate=${sweep}"
     fi
     echo "  host=${host} (${cpu})"
-    echo "  dsp-bench=${dsp}$([[ ${dirty} == True || ${dirty} == true ]] && echo ' (dirty)')"
+    echo "  timepitch-bench=${dsp}$([[ ${dirty} == True || ${dirty} == true ]] && echo ' (dirty)')"
     echo "  libs: signalsmith=${ssm} soundtouch=${stt} rubberband=${rbn}"
 }
 

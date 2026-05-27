@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render charts from dsp-bench JSON reports.
+"""Render charts from timepitch-bench JSON reports.
 
 By default, scans ../reports/ for *.json, picks one stationary-Shepard run
 per (pitch_scale, time_ratio) combination, and emits the same set of PNGs

@@ -177,8 +177,8 @@ std::string write_report(const std::string& out_dir,
     o << "  \"compiler_version\": \"" << json_escape(build_info::compiler_version)  << "\",\n";
     o << "  \"compiler_flags\": \""   << json_escape(build_info::compiler_flags)    << "\",\n";
     o << "  \"build_timestamp\": \""  << json_escape(build_info::build_timestamp)   << "\",\n";
-    o << "  \"dsp_bench_git_rev\": \""<< json_escape(build_info::dsp_bench_git_rev) << "\",\n";
-    o << "  \"dsp_bench_git_dirty\": "<< build_info::dsp_bench_git_dirty            << "\n";
+    o << "  \"timepitch_bench_git_rev\": \""<< json_escape(build_info::timepitch_bench_git_rev) << "\",\n";
+    o << "  \"timepitch_bench_git_dirty\": "<< build_info::timepitch_bench_git_dirty            << "\n";
     o << "},\n";
 
     o << "\"libraries\": {\n";

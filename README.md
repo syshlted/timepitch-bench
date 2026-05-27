@@ -1,4 +1,4 @@
-# dsp-bench
+# timepitch-bench
 
 A reproducible performance and quality benchmark harness for time-stretch /
 pitch-shift and sample-rate-conversion libraries. Originally built to inform
@@ -44,14 +44,20 @@ cmake -S . -B build -DBENCH_ENABLE_RUBBERBAND=OFF
 
 ```sh
 # Compare all three at 1.5x slower, 1 kHz sine
-./build/dsp_bench --signal sine --time-ratio 1.5
+./build/timepitch_bench --signal sine --time-ratio 1.5
 
 # Pitch-shift up an octave on noise, larger blocks
-./build/dsp_bench --signal noise --pitch-scale 2.0 --block-size 1024
+./build/timepitch_bench --signal noise --pitch-scale 2.0 --block-size 1024
 
 # Just one library, report latency
-./build/dsp_bench --library signalsmith --measure-latency
+./build/timepitch_bench --library signalsmith --measure-latency
 ```
+
+Every test from the published writeups can be reproduced one-to-one.
+See [docs/USAGE.md](docs/USAGE.md) for the per-test command recipes.
+
+Independent test results are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
+for how to submit them.
 
 ## Metrics
 
@@ -82,7 +88,7 @@ The JSON captures:
 - `params` — full RunOptions (signal, ratios, block size, sample rate,
   sweep rate, etc.)
 - `build` — compiler ID/version/flags, CMake build type, build timestamp,
-  dsp-bench git short SHA, and dirty flag
+  timepitch-bench git short SHA, and dirty flag
 - `libraries` — FetchContent-resolved git SHA and tag for each of
   signalsmith / soundtouch / rubberband
 - `host` — hostname, uname, CPU model and feature flags, logical-core count
@@ -95,7 +101,7 @@ Opt out per-run with `--no-save`. Override the directory with
 ### Committing reports
 
 `scripts/commit-reports.sh` finds untracked report files under
-`dsp-bench/reports/` and commits them with an auto-generated description
+`timepitch-bench/reports/` and commits them with an auto-generated description
 pulled from each JSON's metadata (host, library revs, params):
 
 ```sh

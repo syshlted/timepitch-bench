@@ -15,7 +15,7 @@ one obviously beats the other on the metrics we can measure synthetically.
 - Trim 5% from each end of the output before measurement to suppress filter
   startup/tail edges.
 
-Runner: `dsp_bench --resample` (see [src/resample_runner.cpp](../src/resample_runner.cpp)).
+Runner: `timepitch_bench --resample` (see [src/resample_runner.cpp](../src/resample_runner.cpp)).
 
 ## Numbers
 
@@ -105,6 +105,6 @@ high-quality offline tiers. Likely the algorithmic constant (FIR length
 audibly-irrelevant levels; the CPU delta is real and one-sided. Listening
 test is now an optional post-integration sanity check rather than a gate.
 
-libsamplerate stays wired in `dsp-bench/` as a permanent comparison point
+libsamplerate stays wired in `timepitch-bench/` as a permanent comparison point
 (same pattern as keeping SoundTouch / Rubber Band post-D-012). Not vendored
 into production.
